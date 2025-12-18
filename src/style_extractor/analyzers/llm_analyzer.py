@@ -41,7 +41,7 @@ class APICallStats:
 @dataclass
 class CostTracker:
     """Tracks API usage and costs."""
-    model: str = "claude-sonnet-4-20250514"
+    model: str = "claude-sonnet-4-5-20250929"
     total_input_tokens: int = 0
     total_output_tokens: int = 0
     total_cost: float = 0.0
@@ -51,8 +51,8 @@ class CostTracker:
 
     def get_pricing(self) -> dict:
         """Get pricing for current model."""
-        # Default to Sonnet pricing if model not found
-        return MODEL_PRICING.get(self.model, MODEL_PRICING["claude-sonnet-4-20250514"])
+        # Default to Sonnet 4.5 pricing if model not found
+        return MODEL_PRICING.get(self.model, MODEL_PRICING["claude-sonnet-4-5-20250929"])
 
     def add_call(self, operation: str, input_tokens: int, output_tokens: int):
         """Record an API call and calculate costs."""
@@ -194,7 +194,7 @@ class LLMAnalyzer:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "claude-sonnet-4-20250514",
+        model: str = "claude-sonnet-4-5-20250929",
         verbose: bool = True,
     ):
         """
@@ -202,7 +202,7 @@ class LLMAnalyzer:
 
         Args:
             api_key: Anthropic API key. If not provided, looks for ANTHROPIC_API_KEY env var.
-            model: Model to use (default: claude-sonnet-4-20250514)
+            model: Model to use (default: claude-sonnet-4-5-20250929)
             verbose: Display cost information in real-time
         """
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
