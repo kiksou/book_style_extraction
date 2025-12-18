@@ -2,8 +2,125 @@
 
 import os
 import json
-from typing import Optional
+from typing import Optional, Callable
 from dataclasses import dataclass, field
+
+from rich.console import Console
+
+console = Console()
+
+
+# Pricing per 1M tokens (USD) - December 2024
+MODEL_PRICING = {
+    "claude-sonnet-4-20250514": {"input": 3.00, "output": 15.00},
+    "claude-opus-4-20250514": {"input": 15.00, "output": 75.00},
+    "claude-3-5-sonnet-20241022": {"input": 3.00, "output": 15.00},
+    "claude-3-opus-20240229": {"input": 15.00, "output": 75.00},
+    "claude-3-sonnet-20240229": {"input": 3.00, "output": 15.00},
+    "claude-3-haiku-20240307": {"input": 0.25, "output": 1.25},
+}
+
+
+@dataclass
+class APICallStats:
+    """Stats for a single API call."""
+    operation: str
+    input_tokens: int
+    output_tokens: int
+    input_cost: float
+    output_cost: float
+    total_cost: float
+
+
+@dataclass
+class CostTracker:
+    """Tracks API usage and costs."""
+    model: str = "claude-sonnet-4-20250514"
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    total_cost: float = 0.0
+    calls: list[APICallStats] = field(default_factory=list)
+    verbose: bool = True
+    on_cost_update: Optional[Callable[[APICallStats], None]] = None
+
+    def get_pricing(self) -> dict:
+        """Get pricing for current model."""
+        # Default to Sonnet pricing if model not found
+        return MODEL_PRICING.get(self.model, MODEL_PRICING["claude-sonnet-4-20250514"])
+
+    def add_call(self, operation: str, input_tokens: int, output_tokens: int):
+        """Record an API call and calculate costs."""
+        pricing = self.get_pricing()
+
+        input_cost = (input_tokens / 1_000_000) * pricing["input"]
+        output_cost = (output_tokens / 1_000_000) * pricing["output"]
+        total_cost = input_cost + output_cost
+
+        call_stats = APICallStats(
+            operation=operation,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            input_cost=input_cost,
+            output_cost=output_cost,
+            total_cost=total_cost,
+        )
+
+        self.calls.append(call_stats)
+        self.total_input_tokens += input_tokens
+        self.total_output_tokens += output_tokens
+        self.total_cost += total_cost
+
+        if self.verbose:
+            self._display_cost(call_stats)
+
+        if self.on_cost_update:
+            self.on_cost_update(call_stats)
+
+    def _display_cost(self, call: APICallStats):
+        """Display cost for a single call."""
+        console.print(
+            f"  [dim]API[/dim] {call.operation}: "
+            f"[cyan]{call.input_tokens:,}[/cyan] in / "
+            f"[cyan]{call.output_tokens:,}[/cyan] out = "
+            f"[yellow]${call.total_cost:.4f}[/yellow] "
+            f"[dim](total: ${self.total_cost:.4f})[/dim]"
+        )
+
+    def get_summary(self) -> dict:
+        """Get cost summary."""
+        return {
+            "model": self.model,
+            "total_calls": len(self.calls),
+            "total_input_tokens": self.total_input_tokens,
+            "total_output_tokens": self.total_output_tokens,
+            "total_tokens": self.total_input_tokens + self.total_output_tokens,
+            "total_cost_usd": self.total_cost,
+            "calls": [
+                {
+                    "operation": c.operation,
+                    "input_tokens": c.input_tokens,
+                    "output_tokens": c.output_tokens,
+                    "cost": c.total_cost,
+                }
+                for c in self.calls
+            ],
+        }
+
+    def display_final_summary(self):
+        """Display final cost summary."""
+        pricing = self.get_pricing()
+        console.print("\n[bold]Coût API Claude[/bold]")
+        console.print(f"  Modèle: [cyan]{self.model}[/cyan]")
+        console.print(f"  Appels API: [cyan]{len(self.calls)}[/cyan]")
+        console.print(
+            f"  Tokens entrée: [cyan]{self.total_input_tokens:,}[/cyan] "
+            f"(${pricing['input']:.2f}/1M)"
+        )
+        console.print(
+            f"  Tokens sortie: [cyan]{self.total_output_tokens:,}[/cyan] "
+            f"(${pricing['output']:.2f}/1M)"
+        )
+        console.print(f"  [bold yellow]Coût total: ${self.total_cost:.4f}[/bold yellow]")
 
 
 @dataclass
@@ -68,17 +185,25 @@ class LLMAnalysisResult:
 class LLMAnalyzer:
     """Uses Claude API for comprehensive style analysis."""
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "claude-sonnet-4-20250514"):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: str = "claude-sonnet-4-20250514",
+        verbose: bool = True,
+    ):
         """
         Initialize LLM analyzer.
 
         Args:
             api_key: Anthropic API key. If not provided, looks for ANTHROPIC_API_KEY env var.
             model: Model to use (default: claude-sonnet-4-20250514)
+            verbose: Display cost information in real-time
         """
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         self.model = model
+        self.verbose = verbose
         self._client = None
+        self.cost_tracker = CostTracker(model=model, verbose=verbose)
 
     @property
     def client(self):
@@ -97,6 +222,24 @@ class LLMAnalyzer:
                     "anthropic package required. Install with: pip install anthropic"
                 )
         return self._client
+
+    def _call_api(self, operation: str, prompt: str, max_tokens: int = 4000) -> str:
+        """Make API call and track costs."""
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        # Track costs
+        usage = response.usage
+        self.cost_tracker.add_call(
+            operation=operation,
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+        )
+
+        return response.content[0].text
 
     def analyze_complete(self, text_sample: str, saga_name: str = "", author: str = "") -> LLMAnalysisResult:
         """
@@ -201,13 +344,8 @@ IMPORTANT:
 - Le style_prompt doit être complet et utilisable tel quel
 - Donne des exemples concrets tirés du texte quand pertinent"""
 
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=8000,
-            messages=[{"role": "user", "content": prompt}]
-        )
-
-        return self._parse_response(response.content[0].text)
+        response_text = self._call_api("Analyse complète", prompt, max_tokens=8000)
+        return self._parse_response(response_text)
 
     def analyze_vocabulary(self, text: str) -> dict:
         """Analyze vocabulary patterns."""
@@ -230,12 +368,8 @@ Réponds en JSON:
     "register": "familier|courant|soutenu|littéraire"
 }}"""
 
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=2000,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return self._extract_json(response.content[0].text)
+        response_text = self._call_api("Vocabulaire", prompt, max_tokens=2000)
+        return self._extract_json(response_text)
 
     def analyze_syntax(self, text: str) -> dict:
         """Analyze sentence structure."""
@@ -260,12 +394,8 @@ Réponds en JSON:
     "clause_complexity": "description de la complexité des propositions"
 }}"""
 
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=1500,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return self._extract_json(response.content[0].text)
+        response_text = self._call_api("Syntaxe", prompt, max_tokens=1500)
+        return self._extract_json(response_text)
 
     def analyze_dialogue(self, text: str) -> dict:
         """Analyze dialogue style."""
@@ -289,12 +419,8 @@ Réponds en JSON:
     "internal_monologue": "fréquent|occasionnel|rare"
 }}"""
 
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=1500,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return self._extract_json(response.content[0].text)
+        response_text = self._call_api("Dialogues", prompt, max_tokens=1500)
+        return self._extract_json(response_text)
 
     def analyze_narrative(self, text: str, chapters: list[str] = None) -> dict:
         """Analyze narrative structure."""
@@ -332,12 +458,8 @@ Réponds en JSON:
     "time_handling": "description de la gestion du temps"
 }}"""
 
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=2000,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return self._extract_json(response.content[0].text)
+        response_text = self._call_api("Structure narrative", prompt, max_tokens=2000)
+        return self._extract_json(response_text)
 
     def analyze_themes(self, text: str) -> dict:
         """Analyze themes and motifs."""
@@ -361,12 +483,8 @@ Réponds en JSON:
     "atmosphere": "description de l'atmosphère générale"
 }}"""
 
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=2000,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return self._extract_json(response.content[0].text)
+        response_text = self._call_api("Thèmes", prompt, max_tokens=2000)
+        return self._extract_json(response_text)
 
     def generate_writing_rules(self, analysis: LLMAnalysisResult) -> list[str]:
         """Generate specific writing rules from analysis."""
@@ -399,13 +517,8 @@ Réponds en JSON:
     ]
 }}"""
 
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=2000,
-            messages=[{"role": "user", "content": prompt}]
-        )
-
-        data = self._extract_json(response.content[0].text)
+        response_text = self._call_api("Règles d'écriture", prompt, max_tokens=2000)
+        data = self._extract_json(response_text)
         return data.get("rules", [])
 
     def generate_style_prompt(self, analysis: LLMAnalysisResult) -> str:
@@ -426,13 +539,8 @@ ANALYSE DU STYLE:
 
 Génère un prompt système complet (500-800 mots) qui capture TOUS ces éléments de manière à ce qu'un LLM puisse reproduire fidèlement ce style. Le prompt doit être directement utilisable."""
 
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=2000,
-            messages=[{"role": "user", "content": prompt}]
-        )
-
-        return response.content[0].text.strip()
+        response_text = self._call_api("Génération prompt", prompt, max_tokens=2000)
+        return response_text.strip()
 
     def _prepare_sample(self, text: str, max_chars: int = 50000) -> str:
         """Prepare text sample for analysis."""

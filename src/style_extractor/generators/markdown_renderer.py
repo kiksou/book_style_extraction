@@ -214,11 +214,26 @@ Copiez ce prompt dans Claude ou ChatGPT pour générer du texte dans ce style :
         else:
             examples = ""
 
+        # Cost section
+        api_costs = bible.get("api_costs", {})
+        if api_costs:
+            cost_section = f"""## Coût de l'Analyse
+
+| Métrique | Valeur |
+|----------|--------|
+| Modèle | {api_costs.get('model', 'N/A')} |
+| Appels API | {api_costs.get('total_calls', 0)} |
+| Tokens entrée | {api_costs.get('total_input_tokens', 0):,} |
+| Tokens sortie | {api_costs.get('total_output_tokens', 0):,} |
+| **Coût total** | **${api_costs.get('total_cost_usd', 0):.4f}** |"""
+        else:
+            cost_section = ""
+
         # Combine all sections
         sections = [
             header, summary, vocabulary, syntax, rhythm, dialogue,
             narrative, thematic, voice, distinctive, writing_rules,
-            style_prompt, examples
+            style_prompt, examples, cost_section
         ]
 
         return "\n\n---\n\n".join(filter(None, sections))

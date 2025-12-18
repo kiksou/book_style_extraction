@@ -9,12 +9,13 @@ from .thematic import ThematicAnalyzer
 
 # Optional LLM analyzer (requires anthropic package)
 try:
-    from .llm_analyzer import LLMAnalyzer, LLMAnalysisResult
+    from .llm_analyzer import LLMAnalyzer, LLMAnalysisResult, CostTracker
     HAS_LLM = True
 except ImportError:
     HAS_LLM = False
     LLMAnalyzer = None
     LLMAnalysisResult = None
+    CostTracker = None
 
 __all__ = [
     "VocabularyAnalyzer",
@@ -25,5 +26,6 @@ __all__ = [
     "ThematicAnalyzer",
     "LLMAnalyzer",
     "LLMAnalysisResult",
+    "CostTracker",
     "HAS_LLM",
 ]

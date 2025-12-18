@@ -270,7 +270,7 @@ class WritingBible:
 
         if self.use_llm:
             from .analyzers import LLMAnalyzer
-            self.llm_analyzer = LLMAnalyzer(api_key=api_key)
+            self.llm_analyzer = LLMAnalyzer(api_key=api_key, verbose=verbose)
 
     def _llm_result_to_dict(self, llm_result) -> dict:
         """Convert LLMAnalysisResult to dictionary for rendering."""
@@ -352,6 +352,10 @@ class WritingBible:
             if not llm_result.style_prompt:
                 llm_result.style_prompt = self.llm_analyzer.generate_style_prompt(llm_result)
 
+            # Display cost summary
+            if self.verbose:
+                self.llm_analyzer.cost_tracker.display_final_summary()
+
             # Build minimal bible for LLM-only rendering
             bible = {
                 "llm_only": True,
@@ -362,6 +366,7 @@ class WritingBible:
                     "total_words_analyzed": total_words,
                 },
                 "llm_analysis": self._llm_result_to_dict(llm_result),
+                "api_costs": self.llm_analyzer.cost_tracker.get_summary(),
             }
 
         else:
@@ -379,7 +384,12 @@ class WritingBible:
                 if not llm_result.style_prompt:
                     llm_result.style_prompt = self.llm_analyzer.generate_style_prompt(llm_result)
 
+                # Display cost summary
+                if self.verbose:
+                    self.llm_analyzer.cost_tracker.display_final_summary()
+
                 bible["llm_analysis"] = self._llm_result_to_dict(llm_result)
+                bible["api_costs"] = self.llm_analyzer.cost_tracker.get_summary()
 
         # Render to markdown
         markdown = self.renderer.render(bible)
@@ -433,6 +443,10 @@ class WritingBible:
             if not llm_result.style_prompt:
                 llm_result.style_prompt = self.llm_analyzer.generate_style_prompt(llm_result)
 
+            # Display cost summary
+            if self.verbose:
+                self.llm_analyzer.cost_tracker.display_final_summary()
+
             bible = {
                 "llm_only": True,
                 "metadata": {
@@ -442,6 +456,7 @@ class WritingBible:
                     "total_words_analyzed": total_words,
                 },
                 "llm_analysis": self._llm_result_to_dict(llm_result),
+                "api_costs": self.llm_analyzer.cost_tracker.get_summary(),
             }
 
         else:
@@ -460,6 +475,11 @@ class WritingBible:
                 if not llm_result.style_prompt:
                     llm_result.style_prompt = self.llm_analyzer.generate_style_prompt(llm_result)
 
+                # Display cost summary
+                if self.verbose:
+                    self.llm_analyzer.cost_tracker.display_final_summary()
+
                 bible["llm_analysis"] = self._llm_result_to_dict(llm_result)
+                bible["api_costs"] = self.llm_analyzer.cost_tracker.get_summary()
 
         return self.renderer.render(bible)
