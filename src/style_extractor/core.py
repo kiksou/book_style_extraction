@@ -249,6 +249,7 @@ class WritingBible:
         use_llm: bool = False,
         llm_only: bool = False,
         api_key: Optional[str] = None,
+        model: Optional[str] = None,
     ):
         """
         Initialize WritingBible.
@@ -258,6 +259,7 @@ class WritingBible:
             use_llm: Use LLM to enhance local analysis
             llm_only: Use LLM as the only analysis engine (no local analysis)
             api_key: Anthropic API key
+            model: Claude model to use (default from ANTHROPIC_MODEL or claude-sonnet-4-5-20250929)
         """
         self.extractor = StyleExtractor(verbose=verbose)
         self.generator = BibleGenerator()
@@ -266,11 +268,12 @@ class WritingBible:
         self.use_llm = use_llm or llm_only
         self.llm_only = llm_only
         self.api_key = api_key
+        self.model = model
         self.llm_analyzer = None
 
         if self.use_llm:
             from .analyzers import LLMAnalyzer
-            self.llm_analyzer = LLMAnalyzer(api_key=api_key, verbose=verbose)
+            self.llm_analyzer = LLMAnalyzer(api_key=api_key, model=model, verbose=verbose)
 
     def _llm_result_to_dict(self, llm_result) -> dict:
         """Convert LLMAnalysisResult to dictionary for rendering."""

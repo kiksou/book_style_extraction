@@ -191,10 +191,12 @@ class LLMAnalysisResult:
 class LLMAnalyzer:
     """Uses Claude API for comprehensive style analysis."""
 
+    DEFAULT_MODEL = "claude-sonnet-4-5-20250929"
+
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "claude-sonnet-4-5-20250929",
+        model: Optional[str] = None,
         verbose: bool = True,
     ):
         """
@@ -202,14 +204,14 @@ class LLMAnalyzer:
 
         Args:
             api_key: Anthropic API key. If not provided, looks for ANTHROPIC_API_KEY env var.
-            model: Model to use (default: claude-sonnet-4-5-20250929)
+            model: Model to use (default: claude-sonnet-4-5-20250929 or ANTHROPIC_MODEL env var)
             verbose: Display cost information in real-time
         """
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
-        self.model = model
+        self.model = model or os.environ.get("ANTHROPIC_MODEL", self.DEFAULT_MODEL)
         self.verbose = verbose
         self._client = None
-        self.cost_tracker = CostTracker(model=model, verbose=verbose)
+        self.cost_tracker = CostTracker(model=self.model, verbose=verbose)
 
     @property
     def client(self):

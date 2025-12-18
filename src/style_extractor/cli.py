@@ -75,7 +75,13 @@ def main():
     envvar="ANTHROPIC_API_KEY",
     help="Anthropic API key (or set ANTHROPIC_API_KEY env var)"
 )
-def analyze(files, output, name, author, quiet, llm, llm_only, api_key):
+@click.option(
+    "--model",
+    envvar="ANTHROPIC_MODEL",
+    default="claude-sonnet-4-5-20250929",
+    help="Claude model to use (or set ANTHROPIC_MODEL env var)"
+)
+def analyze(files, output, name, author, quiet, llm, llm_only, api_key, model):
     """Analyze book files and generate a writing bible.
 
     FILES can be one or more text files (.txt, .md, .epub) containing book content.
@@ -120,7 +126,7 @@ def analyze(files, output, name, author, quiet, llm, llm_only, api_key):
     ))
 
     try:
-        bible = WritingBible(verbose=not quiet, use_llm=llm, llm_only=llm_only, api_key=api_key)
+        bible = WritingBible(verbose=not quiet, use_llm=llm, llm_only=llm_only, api_key=api_key, model=model)
         result = bible.from_files(
             file_paths=list(files),
             saga_name=name,
