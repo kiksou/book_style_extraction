@@ -10,10 +10,16 @@ from rich.console import Console
 console = Console()
 
 
-# Pricing per 1M tokens (USD) - December 2024
+# Pricing per 1M tokens (USD) - December 2025
 MODEL_PRICING = {
+    # Claude 4.5 models (December 2025)
+    "claude-sonnet-4-5-20250929": {"input": 3.00, "output": 15.00},
+    "claude-haiku-4-5-20251001": {"input": 1.00, "output": 5.00},
+    "claude-opus-4-5-20251101": {"input": 5.00, "output": 25.00},
+    # Claude 4 models
     "claude-sonnet-4-20250514": {"input": 3.00, "output": 15.00},
     "claude-opus-4-20250514": {"input": 15.00, "output": 75.00},
+    # Claude 3.5 / 3 models (legacy)
     "claude-3-5-sonnet-20241022": {"input": 3.00, "output": 15.00},
     "claude-3-opus-20240229": {"input": 15.00, "output": 75.00},
     "claude-3-sonnet-20240229": {"input": 3.00, "output": 15.00},
