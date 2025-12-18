@@ -66,12 +66,22 @@ class StyleExtractor:
                     for ci in chapter_infos
                 ]
 
-                # Extract title from filename if needed
+                # Extract metadata from EPUB if available
                 title = path.stem.replace("_", " ").replace("-", " ").title()
+                author = "Unknown"
+
+                if path.suffix.lower() == ".epub":
+                    metadata = self.text_loader.get_epub_metadata(path)
+                    if metadata.get("title"):
+                        title = metadata["title"]
+                    if metadata.get("author"):
+                        author = metadata["author"]
+                    if self.verbose and metadata.get("author"):
+                        console.print(f"  [dim]Author: {author}[/dim]")
 
                 book = Book(
                     title=title,
-                    author="Unknown",  # Will be set later
+                    author=author,
                     content=content,
                     chapters=chapters,
                     file_path=path,
