@@ -1,5 +1,6 @@
 """Command-line interface for the style extractor."""
 
+import os
 import sys
 from pathlib import Path
 
@@ -8,9 +9,22 @@ from rich.console import Console
 from rich.panel import Panel
 
 from .core import WritingBible
+from .analyzers import HAS_LLM
 
 
 console = Console()
+
+
+def load_env_file():
+    """Load .env file if it exists."""
+    env_path = Path.cwd() / ".env"
+    if env_path.exists():
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    os.environ.setdefault(key.strip(), value.strip())
 
 
 @click.group()
@@ -46,26 +60,52 @@ def main():
     is_flag=True,
     help="Suppress progress output"
 )
-def analyze(files, output, name, author, quiet):
+@click.option(
+    "--llm/--no-llm",
+    default=False,
+    help="Use Claude API for enhanced analysis (requires ANTHROPIC_API_KEY)"
+)
+@click.option(
+    "--api-key",
+    envvar="ANTHROPIC_API_KEY",
+    help="Anthropic API key (or set ANTHROPIC_API_KEY env var)"
+)
+def analyze(files, output, name, author, quiet, llm, api_key):
     """Analyze book files and generate a writing bible.
 
-    FILES can be one or more text files (.txt, .md) containing book content.
+    FILES can be one or more text files (.txt, .md, .epub) containing book content.
 
     Example:
-        style-extractor analyze book1.txt book2.txt -o bible.md -n "My Saga" -a "Author Name"
+        style-extractor analyze book1.epub book2.epub -o bible.md -n "My Saga"
+
+    With LLM enhancement:
+        style-extractor analyze book.epub --llm --api-key sk-ant-xxx -o bible.md
     """
+    load_env_file()
+
     if not files:
         console.print("[red]Error:[/red] No files provided. Use --help for usage.")
         sys.exit(1)
 
+    if llm and not HAS_LLM:
+        console.print("[red]Error:[/red] LLM support requires: pip install anthropic")
+        sys.exit(1)
+
+    if llm and not api_key:
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            console.print("[red]Error:[/red] --llm requires API key. Use --api-key or set ANTHROPIC_API_KEY")
+            sys.exit(1)
+
+    mode = "[cyan]LLM-enhanced[/cyan]" if llm else "[dim]local[/dim]"
     console.print(Panel.fit(
         f"[bold]Book Style Extractor[/bold]\n"
-        f"Analyzing {len(files)} file(s)",
+        f"Analyzing {len(files)} file(s) ({mode})",
         border_style="blue"
     ))
 
     try:
-        bible = WritingBible(verbose=not quiet)
+        bible = WritingBible(verbose=not quiet, use_llm=llm, api_key=api_key)
         result = bible.from_files(
             file_paths=list(files),
             saga_name=name,

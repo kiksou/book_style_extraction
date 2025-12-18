@@ -24,7 +24,68 @@ class MarkdownRenderer:
             self._render_examples(bible.get("examples", {})),
         ]
 
+        # Add LLM analysis if present
+        if "llm_analysis" in bible:
+            sections.append(self._render_llm_analysis(bible["llm_analysis"]))
+
         return "\n\n---\n\n".join(filter(None, sections))
+
+    def _render_llm_analysis(self, llm: dict) -> str:
+        """Render LLM-enhanced analysis section."""
+        techniques = "\n".join(f"- {t}" for t in llm.get("narrative_techniques", []))
+        voice = "\n".join(f"- {v}" for v in llm.get("voice_characteristics", []))
+        themes = ", ".join(llm.get("themes", []))
+        strengths = "\n".join(f"- {s}" for s in llm.get("strengths", []))
+        features = "\n".join(f"- {f}" for f in llm.get("distinctive_features", []))
+        rules = "\n".join(f"{i+1}. {r}" for i, r in enumerate(llm.get("writing_rules", [])))
+
+        return f"""## Analyse LLM (Claude)
+
+### Résumé du Style
+
+{llm.get('summary', 'N/A')}
+
+### Techniques Narratives
+
+{techniques or 'N/A'}
+
+### Caractéristiques de la Voix
+
+{voice or 'N/A'}
+
+### Style de Dialogue
+
+{llm.get('dialogue_style', 'N/A')}
+
+### Rythme et Pacing
+
+{llm.get('pacing', 'N/A')}
+
+### Thèmes Identifiés
+
+{themes or 'N/A'}
+
+### Points Forts
+
+{strengths or 'N/A'}
+
+### Traits Distinctifs
+
+{features or 'N/A'}
+
+### Règles d'Écriture (par LLM)
+
+{rules or 'N/A'}
+
+---
+
+## Prompt pour Écrire dans ce Style
+
+Utilisez ce prompt avec un LLM pour générer du texte dans le même style :
+
+```
+{llm.get('style_prompt', 'N/A')}
+```"""
 
     def _render_header(self, metadata: dict) -> str:
         """Render document header."""

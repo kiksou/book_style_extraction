@@ -243,11 +243,23 @@ class StyleExtractor:
 class WritingBible:
     """High-level interface for generating writing bibles."""
 
-    def __init__(self, verbose: bool = True):
+    def __init__(
+        self,
+        verbose: bool = True,
+        use_llm: bool = False,
+        api_key: Optional[str] = None,
+    ):
         self.extractor = StyleExtractor(verbose=verbose)
         self.generator = BibleGenerator()
         self.renderer = MarkdownRenderer()
         self.verbose = verbose
+        self.use_llm = use_llm
+        self.api_key = api_key
+        self.llm_analyzer = None
+
+        if use_llm:
+            from .analyzers import LLMAnalyzer
+            self.llm_analyzer = LLMAnalyzer(api_key=api_key)
 
     def from_files(
         self,
@@ -268,6 +280,28 @@ class WritingBible:
 
         # Generate bible
         bible = self.generator.generate(result)
+
+        # Add LLM analysis if enabled
+        if self.use_llm and self.llm_analyzer:
+            if self.verbose:
+                console.print("\n[cyan]Running LLM analysis...[/cyan]")
+
+            all_text = "\n\n".join(book.content for book in books)
+            llm_result = self.llm_analyzer.analyze_style(all_text)
+
+            # Add LLM insights to bible
+            bible["llm_analysis"] = {
+                "summary": llm_result.writing_style_summary,
+                "narrative_techniques": llm_result.narrative_techniques,
+                "voice_characteristics": llm_result.voice_characteristics,
+                "dialogue_style": llm_result.dialogue_style,
+                "pacing": llm_result.pacing_description,
+                "themes": llm_result.themes,
+                "strengths": llm_result.strengths,
+                "distinctive_features": llm_result.distinctive_features,
+                "writing_rules": llm_result.writing_rules,
+                "style_prompt": self.llm_analyzer.generate_style_prompt(llm_result),
+            }
 
         # Render to markdown
         markdown = self.renderer.render(bible)
@@ -293,7 +327,11 @@ class WritingBible:
         directory = Path(directory)
 
         # Find all supported files
-        files = list(directory.glob("*.txt")) + list(directory.glob("*.md"))
+        files = (
+            list(directory.glob("*.txt")) +
+            list(directory.glob("*.md")) +
+            list(directory.glob("*.epub"))
+        )
         files = sorted(files)
 
         if not files:
@@ -320,6 +358,22 @@ class WritingBible:
 
         # Generate bible
         bible = self.generator.generate(result)
+
+        # Add LLM analysis if enabled
+        if self.use_llm and self.llm_analyzer:
+            llm_result = self.llm_analyzer.analyze_style(text)
+            bible["llm_analysis"] = {
+                "summary": llm_result.writing_style_summary,
+                "narrative_techniques": llm_result.narrative_techniques,
+                "voice_characteristics": llm_result.voice_characteristics,
+                "dialogue_style": llm_result.dialogue_style,
+                "pacing": llm_result.pacing_description,
+                "themes": llm_result.themes,
+                "strengths": llm_result.strengths,
+                "distinctive_features": llm_result.distinctive_features,
+                "writing_rules": llm_result.writing_rules,
+                "style_prompt": self.llm_analyzer.generate_style_prompt(llm_result),
+            }
 
         # Render to markdown
         return self.renderer.render(bible)
