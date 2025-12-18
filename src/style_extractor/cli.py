@@ -63,14 +63,19 @@ def main():
 @click.option(
     "--llm/--no-llm",
     default=False,
-    help="Use Claude API for enhanced analysis (requires ANTHROPIC_API_KEY)"
+    help="Use Claude API to enhance local analysis"
+)
+@click.option(
+    "--llm-only",
+    is_flag=True,
+    help="Use ONLY Claude API for analysis (no local analysis, better results)"
 )
 @click.option(
     "--api-key",
     envvar="ANTHROPIC_API_KEY",
     help="Anthropic API key (or set ANTHROPIC_API_KEY env var)"
 )
-def analyze(files, output, name, author, quiet, llm, api_key):
+def analyze(files, output, name, author, quiet, llm, llm_only, api_key):
     """Analyze book files and generate a writing bible.
 
     FILES can be one or more text files (.txt, .md, .epub) containing book content.
@@ -78,8 +83,11 @@ def analyze(files, output, name, author, quiet, llm, api_key):
     Example:
         style-extractor analyze book1.epub book2.epub -o bible.md -n "My Saga"
 
-    With LLM enhancement:
-        style-extractor analyze book.epub --llm --api-key sk-ant-xxx -o bible.md
+    With LLM (recommended - best results):
+        style-extractor analyze book.epub --llm-only -o bible.md
+
+    With LLM enhancement (local + AI):
+        style-extractor analyze book.epub --llm -o bible.md
     """
     load_env_file()
 
@@ -87,17 +95,24 @@ def analyze(files, output, name, author, quiet, llm, api_key):
         console.print("[red]Error:[/red] No files provided. Use --help for usage.")
         sys.exit(1)
 
-    if llm and not HAS_LLM:
+    use_ai = llm or llm_only
+
+    if use_ai and not HAS_LLM:
         console.print("[red]Error:[/red] LLM support requires: pip install anthropic")
         sys.exit(1)
 
-    if llm and not api_key:
+    if use_ai and not api_key:
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
-            console.print("[red]Error:[/red] --llm requires API key. Use --api-key or set ANTHROPIC_API_KEY")
+            console.print("[red]Error:[/red] --llm/--llm-only requires API key. Use --api-key or set ANTHROPIC_API_KEY")
             sys.exit(1)
 
-    mode = "[cyan]LLM-enhanced[/cyan]" if llm else "[dim]local[/dim]"
+    if llm_only:
+        mode = "[bold cyan]AI-only[/bold cyan]"
+    elif llm:
+        mode = "[cyan]AI-enhanced[/cyan]"
+    else:
+        mode = "[dim]local[/dim]"
     console.print(Panel.fit(
         f"[bold]Book Style Extractor[/bold]\n"
         f"Analyzing {len(files)} file(s) ({mode})",
@@ -105,7 +120,7 @@ def analyze(files, output, name, author, quiet, llm, api_key):
     ))
 
     try:
-        bible = WritingBible(verbose=not quiet, use_llm=llm, api_key=api_key)
+        bible = WritingBible(verbose=not quiet, use_llm=llm, llm_only=llm_only, api_key=api_key)
         result = bible.from_files(
             file_paths=list(files),
             saga_name=name,

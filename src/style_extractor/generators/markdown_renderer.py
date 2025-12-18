@@ -12,6 +12,10 @@ class MarkdownRenderer:
 
     def render(self, bible: dict[str, Any]) -> str:
         """Render complete bible to markdown."""
+        # Check if this is LLM-only mode
+        if bible.get("llm_only") and "llm_analysis" in bible:
+            return self.render_llm_bible(bible)
+
         sections = [
             self._render_header(bible["metadata"]),
             self._render_quick_reference(bible["quick_reference"]),
@@ -30,8 +34,197 @@ class MarkdownRenderer:
 
         return "\n\n---\n\n".join(filter(None, sections))
 
+    def render_llm_bible(self, bible: dict[str, Any]) -> str:
+        """Render bible when LLM is the primary analysis engine."""
+        metadata = bible["metadata"]
+        llm = bible["llm_analysis"]
+        date = datetime.now().strftime("%Y-%m-%d")
+
+        # Header
+        header = f"""# Bible d'Écriture : {metadata['saga_name']}
+
+**Auteur analysé** : {metadata['author']}
+**Livres analysés** : {', '.join(metadata['books_analyzed'])}
+**Mots analysés** : {metadata['total_words_analyzed']:,}
+**Date d'analyse** : {date}
+**Méthode** : Analyse par IA (Claude)
+
+> Ce document capture le style d'écriture et les patterns narratifs extraits par intelligence artificielle.
+> Utilisez-le comme guide pour écrire dans un style identique."""
+
+        # Summary
+        summary = f"""## Résumé du Style
+
+{llm.get('summary', 'Non disponible')}"""
+
+        # Vocabulary
+        vocab_words = ", ".join(llm.get('signature_words', [])[:20])
+        vocab_adj = ", ".join(llm.get('preferred_adjectives', [])[:15])
+        vocab_verbs = ", ".join(llm.get('preferred_verbs', [])[:15])
+
+        vocabulary = f"""## Vocabulaire
+
+**Niveau** : {llm.get('vocabulary_level', 'N/A').upper()}
+
+{llm.get('vocabulary_description', '')}
+
+### Mots Signatures
+> {vocab_words or 'N/A'}
+
+### Adjectifs Préférés
+> {vocab_adj or 'N/A'}
+
+### Verbes Préférés
+> {vocab_verbs or 'N/A'}"""
+
+        # Syntax
+        punct_habits = "\n".join(f"- {h}" for h in llm.get('punctuation_habits', []))
+
+        syntax = f"""## Syntaxe et Structure
+
+**Style** : {llm.get('sentence_style', 'N/A').upper()}
+
+{llm.get('sentence_description', '')}
+
+### Habitudes de Ponctuation
+{punct_habits or 'N/A'}"""
+
+        # Rhythm
+        rhythm_patterns = "\n".join(f"- {p}" for p in llm.get('rhythm_patterns', []))
+
+        rhythm = f"""## Rythme et Pacing
+
+{llm.get('pacing_description', 'N/A')}
+
+### Patterns de Rythme
+{rhythm_patterns or 'N/A'}"""
+
+        # Dialogue
+        dialogue_chars = "\n".join(f"- {c}" for c in llm.get('dialogue_characteristics', []))
+
+        dialogue = f"""## Style de Dialogue
+
+{llm.get('dialogue_style', 'N/A')}
+
+**Préférence d'incises** : {llm.get('dialogue_tags_preference', 'N/A')}
+
+### Caractéristiques
+{dialogue_chars or 'N/A'}"""
+
+        # Narrative
+        techniques = "\n".join(f"- {t}" for t in llm.get('narrative_techniques', []))
+        openings = "\n".join(f"- {o}" for o in llm.get('opening_patterns', []))
+        endings = "\n".join(f"- {e}" for e in llm.get('ending_patterns', []))
+        transitions = "\n".join(f"- {t}" for t in llm.get('transition_techniques', []))
+
+        narrative = f"""## Structure Narrative
+
+### Point de Vue
+{llm.get('pov_analysis', 'N/A')}
+
+### Temps Narratif
+{llm.get('tense_analysis', 'N/A')}
+
+### Structure des Chapitres
+{llm.get('chapter_structure', 'N/A')}
+
+### Techniques Narratives
+{techniques or 'N/A'}
+
+### Patterns d'Ouverture
+{openings or 'N/A'}
+
+### Patterns de Fin
+{endings or 'N/A'}
+
+### Techniques de Transition
+{transitions or 'N/A'}"""
+
+        # Thematic
+        themes_list = ", ".join(llm.get('themes', []))
+        motifs_list = "\n".join(f"- {m}" for m in llm.get('motifs', []))
+        symbolism_list = "\n".join(f"- {s}" for s in llm.get('symbolism', []))
+        emotional = "\n".join(f"- {e}" for e in llm.get('emotional_patterns', []))
+        tension = "\n".join(f"- {t}" for t in llm.get('tension_techniques', []))
+
+        thematic = f"""## Thèmes et Symbolisme
+
+### Thèmes Principaux
+> {themes_list or 'N/A'}
+
+### Motifs Récurrents
+{motifs_list or 'N/A'}
+
+### Symbolisme
+{symbolism_list or 'N/A'}
+
+### Patterns Émotionnels
+{emotional or 'N/A'}
+
+### Techniques de Tension
+{tension or 'N/A'}"""
+
+        # Voice
+        voice_chars = "\n".join(f"- {v}" for v in llm.get('voice_characteristics', []))
+
+        voice = f"""## Voix et Ton
+
+{llm.get('tone_description', 'N/A')}
+
+### Caractéristiques de la Voix
+{voice_chars or 'N/A'}"""
+
+        # Strengths and features
+        strengths = "\n".join(f"- {s}" for s in llm.get('strengths', []))
+        features = "\n".join(f"- {f}" for f in llm.get('distinctive_features', []))
+
+        distinctive = f"""## Points Forts et Traits Distinctifs
+
+### Points Forts
+{strengths or 'N/A'}
+
+### Traits Distinctifs
+{features or 'N/A'}"""
+
+        # Writing rules
+        rules = "\n".join(f"{i+1}. {r}" for i, r in enumerate(llm.get('writing_rules', [])))
+
+        writing_rules = f"""## Règles d'Écriture
+
+Suivez ces règles pour reproduire le style :
+
+{rules or 'Aucune règle générée'}"""
+
+        # Style prompt
+        style_prompt = f"""## Prompt pour Écrire dans ce Style
+
+Copiez ce prompt dans Claude ou ChatGPT pour générer du texte dans ce style :
+
+```
+{llm.get('style_prompt', 'Non disponible')}
+```"""
+
+        # Example prompts
+        example_prompts = llm.get('example_prompts', [])
+        if example_prompts:
+            examples_md = "\n\n".join(f"**{i+1}. Exemple {i+1}**\n```\n{p}\n```" for i, p in enumerate(example_prompts))
+            examples = f"""## Prompts d'Exemple
+
+{examples_md}"""
+        else:
+            examples = ""
+
+        # Combine all sections
+        sections = [
+            header, summary, vocabulary, syntax, rhythm, dialogue,
+            narrative, thematic, voice, distinctive, writing_rules,
+            style_prompt, examples
+        ]
+
+        return "\n\n---\n\n".join(filter(None, sections))
+
     def _render_llm_analysis(self, llm: dict) -> str:
-        """Render LLM-enhanced analysis section."""
+        """Render LLM-enhanced analysis section (complement to local analysis)."""
         techniques = "\n".join(f"- {t}" for t in llm.get("narrative_techniques", []))
         voice = "\n".join(f"- {v}" for v in llm.get("voice_characteristics", []))
         themes = ", ".join(llm.get("themes", []))
@@ -39,7 +232,7 @@ class MarkdownRenderer:
         features = "\n".join(f"- {f}" for f in llm.get("distinctive_features", []))
         rules = "\n".join(f"{i+1}. {r}" for i, r in enumerate(llm.get("writing_rules", [])))
 
-        return f"""## Analyse LLM (Claude)
+        return f"""## Analyse Approfondie par IA (Claude)
 
 ### Résumé du Style
 
@@ -73,7 +266,7 @@ class MarkdownRenderer:
 
 {features or 'N/A'}
 
-### Règles d'Écriture (par LLM)
+### Règles d'Écriture (par IA)
 
 {rules or 'N/A'}
 

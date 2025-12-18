@@ -1,28 +1,72 @@
-"""LLM-enhanced analysis module using Claude API."""
+"""LLM-powered analysis module using Claude API."""
 
 import os
 import json
 from typing import Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
 class LLMAnalysisResult:
-    """Results from LLM analysis."""
-    writing_style_summary: str
-    narrative_techniques: list[str]
-    voice_characteristics: list[str]
-    dialogue_style: str
-    pacing_description: str
-    themes: list[str]
-    strengths: list[str]
-    distinctive_features: list[str]
-    writing_rules: list[str]
-    example_prompts: list[str]
+    """Complete results from LLM analysis."""
+    # Style summary
+    writing_style_summary: str = ""
+
+    # Vocabulary
+    vocabulary_level: str = ""  # rich, moderate, accessible
+    vocabulary_description: str = ""
+    signature_words: list[str] = field(default_factory=list)
+    preferred_adjectives: list[str] = field(default_factory=list)
+    preferred_verbs: list[str] = field(default_factory=list)
+
+    # Syntax
+    sentence_style: str = ""  # complex, balanced, concise
+    sentence_description: str = ""
+    punctuation_habits: list[str] = field(default_factory=list)
+
+    # Rhythm
+    pacing_description: str = ""
+    rhythm_patterns: list[str] = field(default_factory=list)
+
+    # Dialogue
+    dialogue_style: str = ""
+    dialogue_tags_preference: str = ""
+    dialogue_characteristics: list[str] = field(default_factory=list)
+
+    # Narrative
+    pov_analysis: str = ""
+    tense_analysis: str = ""
+    narrative_techniques: list[str] = field(default_factory=list)
+    chapter_structure: str = ""
+    opening_patterns: list[str] = field(default_factory=list)
+    ending_patterns: list[str] = field(default_factory=list)
+    transition_techniques: list[str] = field(default_factory=list)
+
+    # Thematic
+    themes: list[str] = field(default_factory=list)
+    motifs: list[str] = field(default_factory=list)
+    symbolism: list[str] = field(default_factory=list)
+    emotional_patterns: list[str] = field(default_factory=list)
+    tension_techniques: list[str] = field(default_factory=list)
+
+    # Voice
+    voice_characteristics: list[str] = field(default_factory=list)
+    tone_description: str = ""
+
+    # Strengths and distinctive features
+    strengths: list[str] = field(default_factory=list)
+    distinctive_features: list[str] = field(default_factory=list)
+
+    # Actionable rules
+    writing_rules: list[str] = field(default_factory=list)
+
+    # Ready-to-use prompts
+    style_prompt: str = ""
+    example_prompts: list[str] = field(default_factory=list)
 
 
 class LLMAnalyzer:
-    """Uses Claude API for deep style analysis."""
+    """Uses Claude API for comprehensive style analysis."""
 
     def __init__(self, api_key: Optional[str] = None, model: str = "claude-sonnet-4-20250514"):
         """
@@ -54,166 +98,446 @@ class LLMAnalyzer:
                 )
         return self._client
 
-    def analyze_style(self, text_sample: str, max_tokens: int = 4096) -> LLMAnalysisResult:
+    def analyze_complete(self, text_sample: str, saga_name: str = "", author: str = "") -> LLMAnalysisResult:
         """
-        Analyze writing style using Claude.
+        Perform complete style analysis using Claude.
 
         Args:
-            text_sample: Text sample to analyze (will be truncated if too long)
-            max_tokens: Max tokens for response
+            text_sample: Text sample to analyze
+            saga_name: Name of the saga for context
+            author: Author name for context
 
         Returns:
-            LLMAnalysisResult with detailed analysis
+            LLMAnalysisResult with comprehensive analysis
         """
-        # Truncate sample if needed (keep ~50k chars for context)
-        if len(text_sample) > 50000:
-            # Take beginning, middle, and end
-            chunk_size = 15000
-            sample = (
-                text_sample[:chunk_size] +
-                "\n\n[...]\n\n" +
-                text_sample[len(text_sample)//2 - chunk_size//2:len(text_sample)//2 + chunk_size//2] +
-                "\n\n[...]\n\n" +
-                text_sample[-chunk_size:]
-            )
-        else:
-            sample = text_sample
+        # Prepare sample (truncate intelligently if needed)
+        sample = self._prepare_sample(text_sample)
 
-        prompt = f"""Analyse le style d'écriture de ce texte en détail. Je veux créer une "bible d'écriture" pour pouvoir écrire dans le même style.
+        context = ""
+        if saga_name or author:
+            context = f"\nContexte: Saga '{saga_name}' par {author}\n" if saga_name and author else ""
 
+        prompt = f"""Tu es un expert en analyse littéraire et en style d'écriture. Analyse ce texte en profondeur pour créer une "bible d'écriture" complète qui permettra de reproduire exactement ce style.
+{context}
 TEXTE À ANALYSER:
 ---
 {sample}
 ---
 
-Réponds en JSON avec cette structure exacte:
+Analyse TOUS les aspects suivants et réponds en JSON structuré:
+
 {{
-    "writing_style_summary": "Description générale du style en 2-3 phrases",
-    "narrative_techniques": ["technique1", "technique2", ...],
-    "voice_characteristics": ["caractéristique1", "caractéristique2", ...],
-    "dialogue_style": "Description du style de dialogue",
-    "pacing_description": "Description du rythme narratif",
-    "themes": ["thème1", "thème2", ...],
+    "writing_style_summary": "Résumé du style en 3-4 phrases, captant l'essence",
+
+    "vocabulary": {{
+        "level": "rich|moderate|accessible",
+        "description": "Description détaillée du vocabulaire utilisé",
+        "signature_words": ["mot1", "mot2", ...],
+        "preferred_adjectives": ["adj1", "adj2", ...],
+        "preferred_verbs": ["verbe1", "verbe2", ...]
+    }},
+
+    "syntax": {{
+        "style": "complex|balanced|concise",
+        "description": "Description de la structure des phrases",
+        "punctuation_habits": ["habitude1", "habitude2", ...]
+    }},
+
+    "rhythm": {{
+        "pacing": "Description du rythme narratif",
+        "patterns": ["pattern1", "pattern2", ...]
+    }},
+
+    "dialogue": {{
+        "style": "Description du style de dialogue",
+        "tags_preference": "Préférence pour les incises (dit, action, varié...)",
+        "characteristics": ["caractéristique1", ...]
+    }},
+
+    "narrative": {{
+        "pov": "Analyse du point de vue",
+        "tense": "Analyse du temps narratif",
+        "techniques": ["technique1", "technique2", ...],
+        "chapter_structure": "Description de la structure des chapitres",
+        "opening_patterns": ["pattern d'ouverture 1", ...],
+        "ending_patterns": ["pattern de fin 1", ...],
+        "transitions": ["technique de transition 1", ...]
+    }},
+
+    "thematic": {{
+        "themes": ["thème1", "thème2", ...],
+        "motifs": ["motif récurrent 1", ...],
+        "symbolism": ["élément symbolique 1", ...],
+        "emotional_patterns": ["pattern émotionnel 1", ...],
+        "tension_techniques": ["technique de tension 1", ...]
+    }},
+
+    "voice": {{
+        "characteristics": ["caractéristique de voix 1", ...],
+        "tone": "Description du ton général"
+    }},
+
     "strengths": ["point fort 1", "point fort 2", ...],
-    "distinctive_features": ["trait distinctif 1", "trait distinctif 2", ...],
+    "distinctive_features": ["trait distinctif 1", ...],
+
     "writing_rules": [
-        "Règle 1: ...",
-        "Règle 2: ...",
+        "Règle précise et actionnable 1",
+        "Règle précise et actionnable 2",
         ...
     ],
+
+    "style_prompt": "Prompt complet pour écrire dans ce style (utilisable directement avec un LLM)",
+
     "example_prompts": [
-        "Prompt pour générer du texte dans ce style 1",
-        "Prompt pour générer du texte dans ce style 2"
+        "Prompt exemple pour une scène d'action",
+        "Prompt exemple pour un dialogue",
+        "Prompt exemple pour une description"
     ]
 }}
 
-Sois précis et actionnable dans les règles d'écriture. L'objectif est de pouvoir reproduire ce style."""
+IMPORTANT:
+- Sois TRÈS précis et spécifique dans chaque analyse
+- Les règles d'écriture doivent être directement applicables
+- Le style_prompt doit être complet et utilisable tel quel
+- Donne des exemples concrets tirés du texte quand pertinent"""
 
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=max_tokens,
+            max_tokens=8000,
             messages=[{"role": "user", "content": prompt}]
         )
 
-        # Parse JSON response
-        response_text = response.content[0].text
+        return self._parse_response(response.content[0].text)
 
-        # Extract JSON from response (handle markdown code blocks)
-        if "```json" in response_text:
-            json_str = response_text.split("```json")[1].split("```")[0]
-        elif "```" in response_text:
-            json_str = response_text.split("```")[1].split("```")[0]
-        else:
-            json_str = response_text
+    def analyze_vocabulary(self, text: str) -> dict:
+        """Analyze vocabulary patterns."""
+        sample = self._prepare_sample(text, max_chars=30000)
 
-        try:
-            data = json.loads(json_str.strip())
-        except json.JSONDecodeError:
-            # Fallback: try to extract what we can
-            data = {
-                "writing_style_summary": response_text[:500],
-                "narrative_techniques": [],
-                "voice_characteristics": [],
-                "dialogue_style": "",
-                "pacing_description": "",
-                "themes": [],
-                "strengths": [],
-                "distinctive_features": [],
-                "writing_rules": [],
-                "example_prompts": [],
-            }
+        prompt = f"""Analyse le vocabulaire de ce texte:
 
-        return LLMAnalysisResult(
-            writing_style_summary=data.get("writing_style_summary", ""),
-            narrative_techniques=data.get("narrative_techniques", []),
-            voice_characteristics=data.get("voice_characteristics", []),
-            dialogue_style=data.get("dialogue_style", ""),
-            pacing_description=data.get("pacing_description", ""),
-            themes=data.get("themes", []),
-            strengths=data.get("strengths", []),
-            distinctive_features=data.get("distinctive_features", []),
-            writing_rules=data.get("writing_rules", []),
-            example_prompts=data.get("example_prompts", []),
-        )
-
-    def analyze_chapter_style(self, chapter_text: str) -> dict:
-        """Analyze a single chapter for style elements."""
-        prompt = f"""Analyse ce chapitre et extrais les éléments de style:
-
-{chapter_text[:10000]}
+{sample}
 
 Réponds en JSON:
 {{
-    "opening_technique": "comment le chapitre commence",
-    "closing_technique": "comment il se termine",
-    "dominant_mood": "ambiance dominante",
-    "pov_consistency": "cohérence du point de vue",
-    "tension_level": "niveau de tension (1-10)",
-    "dialogue_narrative_ratio": "estimation du ratio dialogue/narration",
-    "notable_techniques": ["technique1", ...]
+    "level": "rich|moderate|accessible",
+    "richness_description": "description de la richesse lexicale",
+    "signature_words": ["les 20 mots les plus caractéristiques de ce style"],
+    "adjectives": ["les 15 adjectifs les plus utilisés"],
+    "verbs": ["les 15 verbes les plus caractéristiques"],
+    "adverbs": ["les 10 adverbes fréquents"],
+    "literary_words": ["mots recherchés ou littéraires utilisés"],
+    "word_length_tendency": "courte|moyenne|longue",
+    "register": "familier|courant|soutenu|littéraire"
 }}"""
 
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=1024,
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return self._extract_json(response.content[0].text)
+
+    def analyze_syntax(self, text: str) -> dict:
+        """Analyze sentence structure."""
+        sample = self._prepare_sample(text, max_chars=30000)
+
+        prompt = f"""Analyse la syntaxe et la structure des phrases:
+
+{sample}
+
+Réponds en JSON:
+{{
+    "sentence_style": "complex|balanced|concise",
+    "average_length_impression": "courte|moyenne|longue",
+    "structure_patterns": ["patterns de structure identifiés"],
+    "punctuation": {{
+        "semicolons": "fréquent|occasionnel|rare",
+        "dashes": "fréquent|occasionnel|rare",
+        "ellipsis": "fréquent|occasionnel|rare",
+        "exclamations": "fréquent|occasionnel|rare"
+    }},
+    "paragraph_style": "description du style de paragraphe",
+    "clause_complexity": "description de la complexité des propositions"
+}}"""
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=1500,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return self._extract_json(response.content[0].text)
+
+    def analyze_dialogue(self, text: str) -> dict:
+        """Analyze dialogue style."""
+        sample = self._prepare_sample(text, max_chars=30000)
+
+        prompt = f"""Analyse le style des dialogues:
+
+{sample}
+
+Réponds en JSON:
+{{
+    "dialogue_frequency": "fréquent|modéré|rare",
+    "style": "description du style de dialogue",
+    "length": "répliques courtes|moyennes|longues",
+    "tags": {{
+        "preference": "dit dominant|varié|actions comme tags",
+        "common_tags": ["les verbes d'incise utilisés"]
+    }},
+    "characteristics": ["caractéristiques notables"],
+    "punctuation_in_dialogue": "description",
+    "internal_monologue": "fréquent|occasionnel|rare"
+}}"""
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=1500,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return self._extract_json(response.content[0].text)
+
+    def analyze_narrative(self, text: str, chapters: list[str] = None) -> dict:
+        """Analyze narrative structure."""
+        sample = self._prepare_sample(text, max_chars=30000)
+
+        # Add chapter openings/endings if available
+        chapter_info = ""
+        if chapters and len(chapters) > 1:
+            openings = [c[:500] for c in chapters[:5]]
+            endings = [c[-500:] for c in chapters[:5]]
+            chapter_info = f"\n\nDébuts de chapitres:\n" + "\n---\n".join(openings)
+            chapter_info += f"\n\nFins de chapitres:\n" + "\n---\n".join(endings)
+
+        prompt = f"""Analyse la structure narrative:
+
+{sample}
+{chapter_info}
+
+Réponds en JSON:
+{{
+    "pov": {{
+        "type": "première personne|troisième limitée|troisième omnisciente|mixte",
+        "description": "description détaillée du POV"
+    }},
+    "tense": {{
+        "primary": "passé|présent|mixte",
+        "usage": "description de l'usage des temps"
+    }},
+    "techniques": ["techniques narratives identifiées"],
+    "chapter_structure": "description de la structure des chapitres",
+    "scene_transitions": ["techniques de transition"],
+    "opening_patterns": ["patterns d'ouverture de chapitre"],
+    "ending_patterns": ["patterns de fin de chapitre"],
+    "pacing_techniques": ["techniques de rythme"],
+    "time_handling": "description de la gestion du temps"
+}}"""
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return self._extract_json(response.content[0].text)
+
+    def analyze_themes(self, text: str) -> dict:
+        """Analyze themes and motifs."""
+        sample = self._prepare_sample(text, max_chars=40000)
+
+        prompt = f"""Analyse les thèmes, motifs et éléments symboliques:
+
+{sample}
+
+Réponds en JSON:
+{{
+    "major_themes": ["thème majeur 1", "thème majeur 2", ...],
+    "minor_themes": ["thème secondaire 1", ...],
+    "recurring_motifs": ["motif récurrent 1", ...],
+    "symbolism": [
+        {{"symbol": "élément", "meaning": "signification"}},
+        ...
+    ],
+    "emotional_arc": "description de l'arc émotionnel",
+    "tension_techniques": ["technique de tension 1", ...],
+    "atmosphere": "description de l'atmosphère générale"
+}}"""
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return self._extract_json(response.content[0].text)
+
+    def generate_writing_rules(self, analysis: LLMAnalysisResult) -> list[str]:
+        """Generate specific writing rules from analysis."""
+        analysis_summary = f"""
+Style: {analysis.writing_style_summary}
+Vocabulaire: {analysis.vocabulary_level} - {analysis.vocabulary_description}
+Syntaxe: {analysis.sentence_style} - {analysis.sentence_description}
+Dialogue: {analysis.dialogue_style}
+Narration: {analysis.pov_analysis}, {analysis.tense_analysis}
+Techniques: {', '.join(analysis.narrative_techniques[:5])}
+Traits distinctifs: {', '.join(analysis.distinctive_features[:5])}
+"""
+
+        prompt = f"""À partir de cette analyse de style, génère 15-20 règles d'écriture PRÉCISES et ACTIONNABLES:
+
+{analysis_summary}
+
+Les règles doivent être:
+- Spécifiques (pas de généralités)
+- Directement applicables
+- Mesurables quand possible
+- Couvrir tous les aspects (vocabulaire, syntaxe, dialogue, narration, rythme)
+
+Réponds en JSON:
+{{
+    "rules": [
+        "Règle 1: ...",
+        "Règle 2: ...",
+        ...
+    ]
+}}"""
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=2000,
             messages=[{"role": "user", "content": prompt}]
         )
 
-        response_text = response.content[0].text
+        data = self._extract_json(response.content[0].text)
+        return data.get("rules", [])
+
+    def generate_style_prompt(self, analysis: LLMAnalysisResult) -> str:
+        """Generate a comprehensive prompt for writing in this style."""
+        prompt = f"""Crée un prompt COMPLET et DÉTAILLÉ pour qu'un LLM puisse écrire exactement dans ce style:
+
+ANALYSE DU STYLE:
+- Résumé: {analysis.writing_style_summary}
+- Vocabulaire: {analysis.vocabulary_level} - Mots signatures: {', '.join(analysis.signature_words[:10])}
+- Syntaxe: {analysis.sentence_style} - {analysis.sentence_description}
+- Rythme: {analysis.pacing_description}
+- Dialogue: {analysis.dialogue_style}
+- POV: {analysis.pov_analysis}
+- Temps: {analysis.tense_analysis}
+- Techniques: {', '.join(analysis.narrative_techniques[:5])}
+- Voix: {', '.join(analysis.voice_characteristics[:5])}
+- Traits distinctifs: {', '.join(analysis.distinctive_features[:5])}
+
+Génère un prompt système complet (500-800 mots) qui capture TOUS ces éléments de manière à ce qu'un LLM puisse reproduire fidèlement ce style. Le prompt doit être directement utilisable."""
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        return response.content[0].text.strip()
+
+    def _prepare_sample(self, text: str, max_chars: int = 50000) -> str:
+        """Prepare text sample for analysis."""
+        if len(text) <= max_chars:
+            return text
+
+        # Take beginning, middle, and end for representative sample
+        chunk_size = max_chars // 3
+
+        beginning = text[:chunk_size]
+        middle_start = len(text) // 2 - chunk_size // 2
+        middle = text[middle_start:middle_start + chunk_size]
+        ending = text[-chunk_size:]
+
+        return f"{beginning}\n\n[...]\n\n{middle}\n\n[...]\n\n{ending}"
+
+    def _parse_response(self, response_text: str) -> LLMAnalysisResult:
+        """Parse LLM response into structured result."""
+        data = self._extract_json(response_text)
+
+        result = LLMAnalysisResult()
+
+        # Main summary
+        result.writing_style_summary = data.get("writing_style_summary", "")
+
+        # Vocabulary
+        vocab = data.get("vocabulary", {})
+        result.vocabulary_level = vocab.get("level", "")
+        result.vocabulary_description = vocab.get("description", "")
+        result.signature_words = vocab.get("signature_words", [])
+        result.preferred_adjectives = vocab.get("preferred_adjectives", [])
+        result.preferred_verbs = vocab.get("preferred_verbs", [])
+
+        # Syntax
+        syntax = data.get("syntax", {})
+        result.sentence_style = syntax.get("style", "")
+        result.sentence_description = syntax.get("description", "")
+        result.punctuation_habits = syntax.get("punctuation_habits", [])
+
+        # Rhythm
+        rhythm = data.get("rhythm", {})
+        result.pacing_description = rhythm.get("pacing", "")
+        result.rhythm_patterns = rhythm.get("patterns", [])
+
+        # Dialogue
+        dialogue = data.get("dialogue", {})
+        result.dialogue_style = dialogue.get("style", "")
+        result.dialogue_tags_preference = dialogue.get("tags_preference", "")
+        result.dialogue_characteristics = dialogue.get("characteristics", [])
+
+        # Narrative
+        narrative = data.get("narrative", {})
+        result.pov_analysis = narrative.get("pov", "")
+        result.tense_analysis = narrative.get("tense", "")
+        result.narrative_techniques = narrative.get("techniques", [])
+        result.chapter_structure = narrative.get("chapter_structure", "")
+        result.opening_patterns = narrative.get("opening_patterns", [])
+        result.ending_patterns = narrative.get("ending_patterns", [])
+        result.transition_techniques = narrative.get("transitions", [])
+
+        # Thematic
+        thematic = data.get("thematic", {})
+        result.themes = thematic.get("themes", [])
+        result.motifs = thematic.get("motifs", [])
+        result.symbolism = thematic.get("symbolism", [])
+        result.emotional_patterns = thematic.get("emotional_patterns", [])
+        result.tension_techniques = thematic.get("tension_techniques", [])
+
+        # Voice
+        voice = data.get("voice", {})
+        result.voice_characteristics = voice.get("characteristics", [])
+        result.tone_description = voice.get("tone", "")
+
+        # Meta
+        result.strengths = data.get("strengths", [])
+        result.distinctive_features = data.get("distinctive_features", [])
+        result.writing_rules = data.get("writing_rules", [])
+        result.style_prompt = data.get("style_prompt", "")
+        result.example_prompts = data.get("example_prompts", [])
+
+        return result
+
+    def _extract_json(self, text: str) -> dict:
+        """Extract JSON from response text."""
+        # Try to find JSON in code blocks
+        if "```json" in text:
+            json_str = text.split("```json")[1].split("```")[0]
+        elif "```" in text:
+            parts = text.split("```")
+            for part in parts[1::2]:  # Odd indices are inside code blocks
+                if part.strip().startswith("{"):
+                    json_str = part
+                    break
+            else:
+                json_str = text
+        else:
+            # Try to find JSON object directly
+            start = text.find("{")
+            end = text.rfind("}") + 1
+            if start != -1 and end > start:
+                json_str = text[start:end]
+            else:
+                json_str = text
 
         try:
-            if "```" in response_text:
-                json_str = response_text.split("```")[1].split("```")[0]
-                if json_str.startswith("json"):
-                    json_str = json_str[4:]
-            else:
-                json_str = response_text
             return json.loads(json_str.strip())
-        except (json.JSONDecodeError, IndexError):
+        except json.JSONDecodeError:
             return {}
-
-    def generate_style_prompt(self, analysis_result: LLMAnalysisResult) -> str:
-        """Generate a prompt that can be used to write in this style."""
-        rules = "\n".join(f"- {rule}" for rule in analysis_result.writing_rules)
-        features = ", ".join(analysis_result.distinctive_features)
-        techniques = ", ".join(analysis_result.narrative_techniques)
-
-        return f"""Tu es un écrivain qui maîtrise ce style d'écriture:
-
-STYLE: {analysis_result.writing_style_summary}
-
-CARACTÉRISTIQUES DE LA VOIX:
-{chr(10).join(f'- {v}' for v in analysis_result.voice_characteristics)}
-
-TECHNIQUES NARRATIVES: {techniques}
-
-STYLE DE DIALOGUE: {analysis_result.dialogue_style}
-
-RYTHME: {analysis_result.pacing_description}
-
-TRAITS DISTINCTIFS: {features}
-
-RÈGLES D'ÉCRITURE À SUIVRE:
-{rules}
-
-Écris dans ce style exact. Maintiens la cohérence de la voix, du rythme et des techniques tout au long du texte."""
